@@ -8,3 +8,8 @@ export interface CanvasDraw {
     x: string;
     y: string;
 }
+
+export interface IncomingMessage {
+    type: string;
+    payload: CanvasDraw;
+}
