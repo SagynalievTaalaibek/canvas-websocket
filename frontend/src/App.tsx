@@ -1,10 +1,52 @@
 import React, { useEffect, useRef } from 'react';
 import './App.css';
+import { CanvasDraw, IncomingMessage } from './types';
 
 const App = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const isDrawing = useRef<boolean>(false);
+
+  const ws = useRef<WebSocket | null>(null);
+
+  const startDraw = (data: CanvasDraw[]) => {
+    const context = contextRef.current;
+    if (!context) return;
+
+    context.save();
+
+    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+
+    data.forEach(({x, y}) => {
+      context.fillRect(x, y, 1, 1);
+    });
+
+    context.restore();
+  };
+
+  useEffect(() => {
+    ws.current = new WebSocket('ws://localhost:8000/canvas');
+
+    ws.current.addEventListener('close', () => console.log('ws close!'));
+
+    ws.current.addEventListener('message', (event) => {
+      const decodedMessage = JSON.parse(event.data) as IncomingMessage;
+
+      if (decodedMessage.type === 'DRAW') {
+        startDraw(decodedMessage.payload);
+      }
+
+      if (decodedMessage.type === 'WELCOME') {
+        startDraw(decodedMessage.payload);
+      }
+    });
+
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -27,6 +69,13 @@ const App = () => {
     isDrawing.current = true;
   };
 
+  const sendCanvasData = (draw: CanvasDraw) => {
+    if (!ws.current) return;
+
+    const data = {type: 'DRAW', payload: draw};
+    ws.current.send(JSON.stringify(data));
+  };
+
   const draw = ({nativeEvent}: React.MouseEvent<HTMLCanvasElement, MouseEvent>) => {
     if (!isDrawing.current) {
       return;
@@ -38,6 +87,8 @@ const App = () => {
       contextRef.current.lineTo(offsetX, offsetY);
       contextRef.current.stroke();
     }
+
+    sendCanvasData({x: offsetX, y: offsetY});
   };
 
   const getCanvasCoordinates = (event: MouseEvent) => {
