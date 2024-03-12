@@ -15,11 +15,16 @@ const App = () => {
 
     context.save();
 
-    context.clearRect(0, 0, context.canvas.width, context.canvas.height);
+    if (data.length > 0) {
+      context.beginPath();
+      context.moveTo(data[0].x, data[0].y);
 
-    data.forEach(({x, y}) => {
-      context.fillRect(x, y, 1, 1);
-    });
+      for (let i = 1; i < data.length; i++) {
+        context.lineTo(data[i].x, data[i].y);
+      }
+
+      context.stroke();
+    }
 
     context.restore();
   };
